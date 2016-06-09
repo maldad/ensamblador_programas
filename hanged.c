@@ -14,62 +14,23 @@ TODO
 */
 
 #define ESC 27
-#define INTERVALO 100
+#define INTERVALO 500
+//#define REGISTRO_BX 0
 //estos 2 arreglos deberian tener la misma longitud
-char cadena[] = "aeropuerto";
+//de mientras, la cadena a formarse se establece aqui
+char cadena[] = "uno";
 char cadenaRevelada[30];
 char caracterLeido; //caracter leido
+char abecedario[54] = "a b c d e f g h i j k l m n o p q r s t u v w x y z";
 int longitudCadena;
 int i; //contador para FOR's
 int intentos = 10;
-char abecedario[54] = "a b c d e f g h i j k l m n o p q r s t u v w x y z";
+int REGISTRO_BX = 0;
+int posx, posy;
+short fila, columna;
+short game_over;
 
-
-void rellena_cadenaRevelada(){
-    for(i = 0; i < strlen(cadena); i++){
-        cadenaRevelada[i] = '_';
-    }
-}
-
-void instrucciones(){
-    printf("%s\n", "Presiona una letra para revelar si la palabra misteriosa la incluye");
-    printf("%s\n", "Presiona 1 para adivinar la palabra de una vez");
-}
-
-void imprimirIntentos(){
-    printf("Te quedan %d intentos\n", intentos);
-}
-
-void palabra(){
-    /*
-     * ESTA FORMA DE IMPRIMIR LA CADENA TRABA EL PROGRAMA!
-     */
-    for(i = 0; i < longitudCadena; i++){
-        printf("%c", cadenaRevelada[i]);
-        printf("  ");
-    }printf("\n");
-}
-
-void teclaLetra(){
-    intentos--;
-    asm{
-        mov ah, 01h
-        int 21h
-        mov caracterLeido, al
-    }printf("\n");
-    if(caracterLeido == ESC) //salir del programa con ESC
-        exit(EXIT_SUCCESS);
-}
-
-void identifica(){
-    longitudCadena = strlen(cadena);
-    for(i = 0; i < longitudCadena; i++){
-        if(cadena[i] == caracterLeido){
-            cadenaRevelada[i] = caracterLeido;
-        }
-    }
-}
-
+//Asembly instructions
 void clearScreen(){
     asm{
         MOV AH, 06H
@@ -84,11 +45,6 @@ void clearScreen(){
 
 void irxy(int x, int y){
     asm{
-        /*no puedo pasar directamente 
-         * mov dh, x
-         * mov dl, y
-         * don't know why (._.)
-         * */
         MOV CX, x 
         mov dh, cl
         mov cx, y
@@ -99,27 +55,103 @@ void irxy(int x, int y){
     }
 }
 
-void interfaz_del_juego(){
-    //instrucciones(); //imprime las instrucciones
-    imprimirIntentos(); //te quedan N intentos
-    //teclaLetra(); //usa la interrupcion para oprimir una tecla
-    //identifica(); //compara si letra pulsada esta en la cadena
-    palabra(); //
+void implementar_mouse(){
+    asm{
+        mov ax, 00
+        int 33h
+        mov ax, 01
+        int 33h
+    }
+}
+
+void mouse_clic(){
+    asm{
+        mov ax, 03
+        int 33h
+        mov REGISTRO_BX, bx 
+
+        mov posx, cx
+        mov posy, dx
+    }
+}
+//Asembly instructions
+
+//C instructions
+void rellena_cadenaRevelada(){
+    for(i = 0; i < strlen(cadena); i++){
+        cadenaRevelada[i] = '_';
+    }
+}
+
+void imprimirIntentos(){
+    printf("Te quedan %d intentos\n", intentos);
+}
+
+void teclaLetra(){
+    intentos--;
+    asm{
+        mov ah, 01h
+        int 21h
+        mov caracterLeido, al
+    }printf("\n");
+    if(caracterLeido == ESC) //salir del programa con ESC
+        exit(EXIT_SUCCESS);
+}
+
+void identifica(){
+    intentos--;
+    longitudCadena = strlen(cadena);
+    for(i = 0; i < longitudCadena; i++){
+        if(cadena[i] == caracterLeido){
+            cadenaRevelada[i] = caracterLeido;
+        }
+    }
+}
+
+void which_caracter(){
+    switch(fila){
+        case(16): caracterLeido = 'a';break;
+        case(18): caracterLeido = 'b';break;
+        case(20): caracterLeido = 'c';break;
+        case(22): caracterLeido = 'd';break;
+        case(24): caracterLeido = 'e';break;
+        case(26): caracterLeido = 'f';break;
+        case(28): caracterLeido = 'g';break;
+        case(30): caracterLeido = 'h';break;
+        case(32): caracterLeido = 'i';break;
+        case(34): caracterLeido = 'j';break;
+        case(36): caracterLeido = 'k';break;
+        case(38): caracterLeido = 'l';break;
+        case(40): caracterLeido = 'm';break;
+        case(42): caracterLeido = 'n';break;
+        case(44): caracterLeido = 'o';break;
+        case(46): caracterLeido = 'p';break;
+        case(48): caracterLeido = 'q';break;
+        case(50): caracterLeido = 'r';break;
+        case(52): caracterLeido = 's';break;
+        case(54): caracterLeido = 't';break;
+        case(56): caracterLeido = 'u';break;
+        case(58): caracterLeido = 'v';break;
+        case(60): caracterLeido = 'w';break;
+        case(62): caracterLeido = 'x';break;
+        case(64): caracterLeido = 'y';break;
+        case(66): caracterLeido = 'z';break;
+        default: caracterLeido = ' ';break;
+    }
+}
+
+void revisa_cadenaRevelada(){
+    char guion_default = '_';
+    char *puntero;
+    puntero = strchr(cadenaRevelada, guion_default);
+    //busca en cadenaRevelada si aun tiene guiones
+    if(puntero == NULL)
+        game_over = 1;
+    else
+        game_over = 0;
 }
 
 void imprimeAbecedario(){
-    /*
-    for(i = 0; i < 10; i++){
-        irxy(i, 16);
-        printf("%s\n", abecedario);
-        //irxy(20, 0);
-        //interfaz_del_juego();
-        //imprimirIntentos();
-        //palabra();
-        delay(INTERVALO);
-        clearScreen();
-    }
-    */
     i = 0;
     while(intentos > 1){
         irxy(i, 16);
@@ -130,6 +162,35 @@ void imprimeAbecedario(){
         //que el abc no baje mas alla de la mitad de la pantalla
         if(i >= 10)
             i = 0;
+        //manejar los clics
+        mouse_clic();
+
+        if(REGISTRO_BX == 1){
+            //irxy(18, 1);
+            //printf("clic izquierdo");
+            fila = posx/8;
+            columna = posy/8;
+            which_caracter(fila);
+            identifica();
+            revisa_cadenaRevelada();
+            if(game_over == 1){
+                printf("Has ganado! \n");
+                system("pause");
+                exit(EXIT_SUCCESS);
+            }else{}
+        }
+
+        if(REGISTRO_BX == 2){
+            //irxy(19, 1);
+            //printf("clic derecho");
+            exit(EXIT_SUCCESS);
+        }
+
+        irxy(18, 1);
+        printf("posicion %d %d", fila, columna);
+        irxy(19, 1);
+        printf("caracter leido: %c ", caracterLeido);
+        //imprimir la interfaz del juego
         irxy(20, 1);
         imprimirIntentos();
         irxy(21, 1);
@@ -142,16 +203,8 @@ void imprimeAbecedario(){
 void main(){
     clearScreen();
     rellena_cadenaRevelada();
+    implementar_mouse();
     imprimeAbecedario();
-    /*
-    instrucciones();
-    palabra(); //imprime la palabra
-    while(intentos > 1){
-        imprimirIntentos();
-        teclaLetra();
-        identifica();
-        palabra();  
-    }
-    */
+    printf("se acabaron los intentos \n");
     system("pause");
 }
